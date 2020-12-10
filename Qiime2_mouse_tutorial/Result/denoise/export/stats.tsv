@@ -1,0 +1,8 @@
+sample-id	input	filtered	percentage of input passed filter	denoised	non-chimeric	percentage of input non-chimeric
+#q2:types	numeric	numeric	numeric	numeric	numeric	numeric
+recip.220.WT.OB1.D7	4460	3776	84.66	2881	2213	49.62
+recip.290.ASO.OB2.D1	4762	4637	97.38	4480	4082	85.72
+recip.389.WT.HC2.D21	5572	5479	98.33	5361	4612	82.77
+recip.391.ASO.PD2.D14	4739	4668	98.5	4583	4140	87.36
+recip.391.ASO.PD2.D21	5263	5182	98.46	4976	4571	86.85
+recip.391.ASO.PD2.D7	5186	4924	94.95	4000	3765	72.6

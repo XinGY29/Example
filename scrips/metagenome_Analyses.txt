@@ -1,0 +1,84 @@
+#data
+cd data
+
+#QC
+makdir ReadQC_result
+fastqc -o ReadQC_result seqfile1 seqfile2 .... seqfileN
+#remove adapter
+mkdir Trimed_data
+1:java -jar path./trimmomatic-0.39.jar PE -phred33 -trimlog seq.log -threads 24 seq1.fq.gz seq2.fq.gz seq1.clean.fq.gz seq1.unpaired.fq.gz seq2.clean.fq.gz seq2.unpaired.fq.gz ILLUMINACLIP:./adapters/TruSeq3-PE.fa:2:30:10 SLIDINGWINDOW:5:20 LEADING:5 TRAILING:5 MINLEN:50
+2:trim_galore -q 25 --length 75 --dont_gzip --clip_R1 16 --clip_R2 16 --paired $fastqdir/${bname}_R1*.fq $fastqdir/${bname}_R2*.fq -o $trimdir
+#remove host reads
+bowtie2 --local --threads 40 -x /home/mang/genome/human/human -U "$file"_1.QC.Entropy.DUP.fq,"$file"_2.QC.Entropy.DUP.fq -S "$file".nohuman.sam --un "$file".nohuman.fq; rm "$file".nohuman.sam
+
+#assembly
+mkdir assembly
+cd asseembly
+megahit --num-cpu-threads 24 --memory 0.9 --min-contig-len 500 -r "$file".fastq -o "$file"_out
+
+#contigs Quality
+contig-stats.pl < Assembly/final.contigs.fa
+
+###Bining
+#bowtie db
+bowtie2-build --threads 24 ref-in bt2_base-name
+#bowtie match
+bowtie2 --local --threads 24 -x /home/mang/genome/human/human -U "$file"_1.QC.Entropy.DUP.fq,"$file"_2.QC.Entropy.DUP.fq -S "$file".nohuman.sam 
+#b
+bowtie2 --local --threads 24 -x /home/mang/genome/human/human -U "$file"_1.QC.Entropy.DUP.fq,"$file"_2.QC.Entropy.DUP.fq -S "$file".nohuman.sam --un "$file".nohuman.fq  -b "file".nohuman.bam --un "file".unpaired.fq
+#trans sam > sorted.bam
+samtools view -bS filename.sam > filename.bam
+samtools sort filename.bam -o filename.sorted.bam
+
+##use CONCOCT binning
+#cut contigs into smaller parts
+cut_up_fasta.py original_contigs.fa -c 10000 -o 0 --merge_last -b contigs_10K.bed > contigs_10K.fa
+#link cutted contigs to original contigs
+concoct_coverage_table.py contigs_10K.bed mapping/Sample*.sorted.bam > coverage_table.tsv
+#binning
+concoct --composition_file contigs_10K.fa --coverage_file coverage_table.tsv -b concoct_output/
+#Merge subcontig clustering into original contig clustering
+merge_cutup_clustering.py concoct_output/clustering_gt1000.csv > concoct_output/clustering_merged.csv
+cut -d"," -f2 clustering_gt1000.csv
+#Extract bins as individual FASTA
+mkdir concoct_output/fasta_bins | sort | uniq -c |wc
+extract_fasta_bins.py original_contigs.fa concoct_output/clustering_merged.csv --output_path concoct_output/fasta_bins
+
+###annotate genes on contigs
+#call genes
+mkdir Annotate
+cd Annotate/
+$METAG/LengthFilter.pl ../contigs/final_contigs_c10K.fa 1000 > final_contigs_gt1000_c10K.fa
+prodigal -i final_contigs_gt1000_c10K.fa -a final_contigs_gt1000_c10K.faa -d final_contigs_gt1000_c10K.fna  -f gff -p meta -o final_contigs_gt1000_c10K.gff
+#rpsblast to COG db/下面的语句可能不可以使用，可以直接使用rpsblast的语法方式，该步很慢
+$CONCOCT/scripts/RPSBLAST.sh -f final_contigs_gt1000_c10K.faa -p -c 32 -r 1
+$CONCOCT/scripts/COG_table.py -b final_contigs_gt1000_c10K.out -m $CONCOCT/scgs/scg_cogs_min0.97_max1.03_unique_genera.txt -c ../Concoct/clustering_gt1000.csv --cdd_cog_file $CONCOCT/scgs/cdd_to_cog.tsv > clustering_gt1000_scg.tsv
+$CONCOCT/scripts/COGPlot.R -s clustering_gt1000_scg.tsv -o clustering_gt1000_scg.pdf
+
+cd ../Concoct
+tr "\t" "," < Coverage.tsv > Coverage.csv
+python $METAG/ClusterMeanCov.py Coverage.csv clustering_gt1000.csv ../contigs/final_contigs_c10K.fa > cluster_freq.csv
+sed 's/Map\///g' cluster_freq.csv | sed 's/^/D/' > cluster_freqR.csv
+
+# Meta 分析物种的多样性
+metaphlan2.py -t rel_ab_w_read_stats  --no_map --nproc 24 --input_type fasta "$file".nohuman.fa  > "$file".nohuman.fa.metaphlan
+
+#样品物种合并
+merge_metaphlan_tables.py metaphlan2*.txt | sed 's/metaphlan2_//g' > merged_metaphlan2.txt
+
+# 绘制热图
+python utils/metaphlan_hclust_heatmap.py\ 
+ -c bbcry \	#颜色方案
+ --top 25 \	#画图画多少种类
+ --minv 0.1 \	#显示的最小值
+ -s log \	#标准化方式
+ --tax_lev s \ #levels 'k' : kingdoms (Bacteria and Archaea) only 'p': phyla only 'c' : classes only 'o' : orders only 'f': families only 'g' : genera only 's' : species only [default 's']
+ --in output/merged_abundance_table.txt \
+ --out output_images/abundance_heatmap.png \
+ # -x X \横向长度
+ # -y Y \纵向大小
+
+#基因预测的分析
+HUMAnN2软件进行
+
+#binning后使用PROKKA预测结构

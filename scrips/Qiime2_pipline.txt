@@ -1,0 +1,133 @@
+#导入数据
+unzip demultiplesed_seqs.zip
+#信息提取
+unzipunzip -k file.qza data/
+qiime tools export [option] \
+Usage: qiime tools export [OPTIONS]
+
+  Exporting extracts (and optionally transforms) data stored inside an
+  Artifact or Visualization. Note that Visualizations cannot be transformed
+  with --output-format
+
+Options:
+  --input-path ARTIFACT/VISUALIZATION
+                        Path to file that should be exported        [required]
+  --output-path PATH    Path to file or directory where data should be
+                        exported to                                 [required]
+  --output-format TEXT  Format which the data should be exported as. This
+                        option cannot be used with Visualizations
+  --help                Show this message and exit.
+
+
+
+
+qiime tools import \
+  --type "SampleData[SequencesWithQuality]" \
+  --input-format SingleEndFastManifestPhred33V2 \
+  --input-path ./manifest.tsv \
+  --output-path ./demux_seqs.qza
+
+#使用dada2算法进行聚类处理
+mkdir denoise
+qiime dada2 denoise-single \
+  --i-demultiplexed-seqs demux_seqs.qza \
+  --p-trunc-len 150 \
+  --p-n-threads 8 \
+  --o-representative-sequences denoise/dada2_rep_set.qza \
+  --o-table denoise/dada2_table.qza \
+  --o-denoising-stats denoise/dada2_stats.qza
+
+#查看结果/结果可视化，可选项
+qiime metadata tabulate \
+  --m-input-file denoise/dada2_stats.qza \
+  --o-visualization denoise/dada2_stats.qzv
+
+#提取聚类之后的信息
+qiime feature-table summarize \
+  --i-table denoise/dada2_table.qza \
+  --m-sample-metadata-file metadata.tsv \
+  --o-visualization denoise/data2_table.qzv
+
+#物种分类分析
+#下载模型矫正数据库
+mkdir taxonomy
+wget \
+  -O "taxonomy/ref_seqs_v4.qza" \
+  "https://data.qiime2.org/2020.8/tutorials/pd-mice/ref_seqs_v4.qza"
+wget \
+  -O "taxonomy/ref_tax.qza" \
+  "https://data.qiime2.org/2020.8/tutorials/pd-mice/ref_tax.qza"
+wget \
+  -O "taxonomy/animal_distal_gut.qza" \
+  "https://data.qiime2.org/2020.8/tutorials/pd-mice/animal_distal_gut.qza"
+#训练分类器
+qiime feature-classifier fit-classifier-naive-bayes \
+  --i-reference-reads ./taxonomy/ref_seqs_v4.qza \
+  --i-reference-taxonomy ./taxonomy/ref_tax.qza \
+  --i-class-weight ./taxonomt/animal_distal_gut.qza \
+  --o-classifier ./taxonumy/bespoke.qza
+#进行分类
+qiime feature-classifier classify-sklearn \
+  --i-reads ./denoise/dada2_rep_set.qza \
+  --i-classifier ./denoise/bespoke.qza \
+  --o-classification ./taxonomy/bespoke_taxonomy.qza
+#分类结果可视化
+qiime metadata tabulate \
+  --m-input-file ./taxonomy/bespoke_taxonomy.qza \
+  --o-visualization ./taxonomy/bespoke_taxonomy.qzv
+
+#构建进化树分析
+#使用参考序列的方法
+#wget \
+#  -O "sepp-refs-gg-13-8.qza" \
+#  "https://data.qiime2.org/2020.8/common/sepp-refs-gg-13-8.qza"
+#qiime fragment-insertion sepp \
+#  --i-representative-sequences ./dada2_rep_set.qza \
+#  --i-reference-database sepp-refs-gg-13-8.qza \
+#  --o-tree ./tree.qza \
+#  --o-placements ./tree_placements.qza \
+#  --p-threads 1  # update to a higher number if you can
+#使用mafft fastttree构建进化树的方法
+qiime phylogeny align-to-tree-mafft-fasttree \
+  --i-sequences /denoise/dada2_rep_set.qza \
+  --output-dir mafft-fasttree-output
+
+#Alpha rarefaction plotting
+qiime diversity alpha-rarefaction \
+  --i-table denoise/dada2_table.qza \
+  --m-metadata-file metadata.tsv \
+  --i-phylogeny mafft-fasttree-output/rooted-tree.qza \
+  --p-min-depth 10 \
+  --p-max-depth 4250 \
+  --o-visualization diversity/alpha_rarefaction_curves.qzv
+
+#进行多样性分析
+qiime diversity core-metrics-phylogenetic \
+  --i-phylogeny mafft-fasttree-output/rooted_tree.qza \
+  --i-table denoise/dada_table.qza \
+  --p-sampling-depth 2000 \
+  --m-metadata-file metadata.tsv \
+  --output-dir core-metrics-results
+
+#Alpha diversity
+qiime diversity alpha-group-signifacance \
+  --i-alpha-diversity core-metrics-results/faith_pd_vector.qza \
+  --m-metadata-file  metadata.tsv \
+  --o-visualization core-metrics-results/evenness_statistics.qzv
+
+#Beta diversity
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/unweighted_unifrac_distance_matrix.qza \
+  --m-metadata-file metadata.tsv \
+  --m-metadata-column donor \
+  --o-visualization core-metrics-results/unweighted-unifrac-donor-significance.qzv
+
+qiime diversity beta-group-significance \
+  --i-distance-matrix core-metrics-results/weighted_unifrac_distance_matrix.qza \
+  --m-metadata-file metadata.tsv \
+  --m-metadata-column donor \
+  --o-visualization core-metrics-results/weighted-unifrac-donor-significance.qzv
+
+
+
+

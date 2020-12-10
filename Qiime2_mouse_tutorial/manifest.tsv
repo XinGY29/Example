@@ -1,0 +1,7 @@
+sample-id	absolute-filepath
+recip.220.WT.OB1.D7	$PWD/demultiplexed_seqs/10483.recip.220.WT.OB1.D7_30_L001_R1_001.fastq.gz
+recip.290.ASO.OB2.D1	$PWD/demultiplexed_seqs/10483.recip.290.ASO.OB2.D1_27_L001_R1_001.fastq.gz
+recip.389.WT.HC2.D21	$PWD/demultiplexed_seqs/10483.recip.389.WT.HC2.D21_1_L001_R1_001.fastq.gz
+recip.391.ASO.PD2.D14	$PWD/demultiplexed_seqs/10483.recip.391.ASO.PD2.D14_5_L001_R1_001.fastq.gz
+recip.391.ASO.PD2.D21	$PWD/demultiplexed_seqs/10483.recip.391.ASO.PD2.D21_1_L001_R1_001.fastq.gz
+recip.391.ASO.PD2.D7	$PWD/demultiplexed_seqs/10483.recip.391.ASO.PD2.D7_15_L001_R1_001.fastq.gz

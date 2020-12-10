@@ -1,0 +1,12 @@
+2020-12-09 20:45:15,843:INFO:root:Results created at /home/xingenyang/BacTax_test/Metagenome/concoct_output
+2020-12-09 20:45:19,502:INFO:root:Successfully loaded composition data.
+2020-12-09 20:45:19,573:INFO:root:Successfully loaded coverage data.
+2020-12-09 20:45:20,864:INFO:root:Performed PCA, resulted in 57 dimensions
+2020-12-09 20:45:22,597:INFO:root:Wrote original filtered data file.
+2020-12-09 20:45:23,395:INFO:root:Wrote PCA transformed file.
+2020-12-09 20:45:23,401:INFO:root:Wrote PCA components file.
+2020-12-09 20:45:23,401:INFO:root:PCA transformed data.
+2020-12-09 20:45:23,401:INFO:root:Will call vbgmm with parameters: concoct_output/, 400, 1000, 1, 500
+2020-12-09 20:47:53,915:INFO:root:Wrote assign file.
+2020-12-09 20:47:53,916:INFO:root:CONCOCT Finished
+2020-12-09 20:47:53,918:INFO:root:CONCOCT Finished, the log shows how it went.
