@@ -40,16 +40,17 @@ echo "#########  Concoct bining took $((endtime - starttime )) seconds  ########
 
 export METAG=$PWD/../metag-rev-sup
 export CONCOCT=$PWD/../CONCOCT
+export Prodigal=$PWD/../Prodigal
 StartTime=$(date +%s)
 $METAG/scripts/LengthFilter.pl Concoct/contigs_10K.fa 1000 > Annotate/contigs_gt1000_10K.fa
 #Prodigal需要进行安装
-/home/xingenyang/Biosoft/Prodigal/prodigal -i Annotate/contigs_gt1000_10K.fa -a Annotate/contigs_gt1000_10K.faa -d Annotate/contigs_gt1000_10K.fna  -f gff -p meta -o Annotate/contigs_gt1000_10K.gff
+$Prodigal/prodigal -i Annotate/contigs_gt1000_10K.fa -a Annotate/contigs_gt1000_10K.faa -d Annotate/contigs_gt1000_10K.fna  -f gff -p meta -o Annotate/contigs_gt1000_10K.gff
 EndTime=$(date +%s)
 echo "Call out genes using Prodigal took $((EndTime - StartTime)) seconds"
 StartTime=$(date +%s)
 rpsblast -outfmt "6 qseqid sseqid evalue pident score qstart qend sstart send length slen" -max_target_seqs 500 -evalue 0.00001 -query Annotate/contigs_gt1000_10K.faa -db ../COG/Cog -out Annotate/contigs_gt1000_c10K.faa.out -num_threads 24
 EndTime=$(date +%s)
 echo "#############   rpsblast took $((EndTime - StartTime)) seconds"
-
+#需要退出conda环境，conda deactivate
 $CONCOCT/scripts/COG_table.py -b Annotate/contigs_gt1000_c10K.faa.out -m ../CONCOCT/scgs/scg_cogs_min0.97_max1.03_unique_genera.txt -c concoct_output/clustering_gt1000.csv --cdd_cog_file ../CONCOCT/scgs/cdd_to_cog.tsv > clustering_gt1000_scg.tsv
 $CONCOCT/scripts/COGPlot.R -s clustering_gt1000_scg.tsv -o clustering_gt1000_scg.pdf
